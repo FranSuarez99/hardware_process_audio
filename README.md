@@ -1,5 +1,7 @@
 # hardware_process_audio
 
+#NOTE: WIP
+
 This project aims to create a volume control system for a Windows PC using an Arduino microcontroller, an encoder, an OLED display, and a button. The system allows the user to control the volume of individual audio processes on their PC and display relevant information on the OLED display.
 
 ## Features

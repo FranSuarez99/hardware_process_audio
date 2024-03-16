@@ -4,6 +4,7 @@ import win32ui
 import win32gui
 import win32con
 import win32api
+from PIL import Image
 
 # Setup logging
 LOG_FILENAME = 'scripts\\log\\bitmap_script.log'
@@ -14,38 +15,47 @@ logging.basicConfig(
 )
 logger = logging.getLogger()
 
+def image2(proc):
+    path = proc.exe().replace("\\", "/")
+    icoX = win32api.GetSystemMetrics(win32con.SM_CXICON)
+    icoY = win32api.GetSystemMetrics(win32con.SM_CXICON)
+
+    large, small = win32gui.ExtractIconEx(path, 0)
+    win32gui.DestroyIcon(small[0])
+
+    hdc = win32ui.CreateDCFromHandle(win32gui.GetDC(0))
+    hbmp = win32ui.CreateBitmap()
+    hbmp.CreateCompatibleBitmap(hdc, icoX, icoX)
+    hdc = hdc.CreateCompatibleDC()
+
+    hdc.SelectObject(hbmp)
+    hdc.DrawIcon((0,0), large[0])
+
+    bmpstr = hbmp.GetBitmapBits(True)
+    img = Image.frombuffer(
+        'RGBA',
+        (32,32),
+        bmpstr, 'raw', 'BGRA', 0, 1
+    )
+
+    img.save(f'icons\\{proc.name()}.png')
+
 def get_process_icons():
     process_icons = {}
 
     # Iterate over all running processes
-    for proc in psutil.process_iter(['pid', 'name']):
+    for proc in psutil.process_iter():
         try:
-            # Get process handle
-            handle = win32gui.GetForegroundWindow()
-            # Get process icon
-            icon = win32gui.ExtractIcon(win32api.GetModuleHandle(None), proc.info['name'], 0)
-            if icon:
-                # Convert icon to bitmap
-                icon_bitmap = win32ui.CreateBitmap()
-                icon_bitmap.CreateCompatibleBitmap(win32gui.GetDC(0), 32, 32)
-                dc = win32ui.CreateDC()
-                dc.SelectObject(icon_bitmap)
-                dc.DrawIcon((0, 0), icon[0])
-                # Save bitmap to file
-                bitmap_path = f"{proc.info['name']}.bmp"
-                icon_bitmap.SaveBitmapFile(dc, bitmap_path)
-                # Close handles
-                dc.DeleteDC()
-                icon_bitmap.DeleteObject()
-                win32gui.DestroyIcon(icon[0])
-                # Store bitmap path
-                process_icons[proc.info['name']] = bitmap_path
+            if proc.exe():
+                    image2(proc)
+            else:
+                pass
         except win32gui.error as e:
             # Log error and continue to the next process
-            logger.error(f"Error retrieving icon for {proc.info['name']}: {e}")
+            logger.error(f"Error retrieving icon for {proc._name}: {e}")
         except Exception as e:
             # Log other exceptions and continue to the next process
-            logger.error(f"Error retrieving icon for {proc.info['name']}: {e}")
+            logger.error(f"Error retrieving icon for {proc._name}: {e}")
 
     return process_icons
 

@@ -6,7 +6,7 @@ import win32con
 import win32api
 
 # Setup logging
-LOG_FILENAME = 'bitmap_script.log'
+LOG_FILENAME = 'log/bitmap_script.log'
 logging.basicConfig(
     level=logging.ERROR,
     format='%(asctime)s - %(levelname)s - %(message)s',

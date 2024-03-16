@@ -15,7 +15,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger()
 
-def image2(proc):
+def get_icon_from_process(proc: psutil.Process) -> None:
     path = proc.exe().replace("\\", "/")
     icoX = win32api.GetSystemMetrics(win32con.SM_CXICON)
     icoY = win32api.GetSystemMetrics(win32con.SM_CXICON)
@@ -37,30 +37,22 @@ def image2(proc):
         (32,32),
         bmpstr, 'raw', 'BGRA', 0, 1
     )
+    monochrome_img = img.convert('1')
+    monochrome_img.save(f'icons\\{proc.name()[:-4]}.bmp')
 
-    img.save(f'icons\\{proc.name()}.png')
-
-def get_process_icons():
-    process_icons = {}
-
-    # Iterate over all running processes
+def get_process_icons() -> None:
     for proc in psutil.process_iter():
         try:
             if proc.exe():
-                    image2(proc)
+                    get_icon_from_process(proc)
             else:
                 pass
-        except win32gui.error as e:
-            # Log error and continue to the next process
-            logger.error(f"Error retrieving icon for {proc._name}: {e}")
         except Exception as e:
             # Log other exceptions and continue to the next process
-            logger.error(f"Error retrieving icon for {proc._name}: {e}")
-
-    return process_icons
+            logger.error(f"Error retrieving icon for {proc.name()}, PID {proc.pid}: {e}")
 
 def main():
-    process_icons = get_process_icons()
+    get_process_icons()
     print("Process icons saved successfully.")
 
 if __name__ == "__main__":

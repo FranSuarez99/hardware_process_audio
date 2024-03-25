@@ -1,22 +1,30 @@
-#include <SPI.h>
-#include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-
+#include "Arduino.h"
+#include "NewEncoder.h"
 // Rotary Encoder Connections
-#define ENC_A 2
-#define ENC_B 3
-
+// Rotary Encoder Inputs
+NewEncoder encoder(2, 3, -100, 0, 0, HALF_PULSE);
+int16_t prevEncoderValue;
+int16_t currentValue;
 Adafruit_SSD1306 display(128, 32, &Wire, -1);
 
-volatile int encoderPos = 0;
-int lastEncoded = 0;
-boolean direction;
-
 void setup() {
-  Serial.begin(9600);
-
-  Serial.println("OLED FeatherWing test");
+  NewEncoder::EncoderState state;
+  Serial.begin(115200);
+  delay(2000);
+  Serial.println("Starting");
+  if (!encoder.begin()) {
+    Serial.println("Encoder Failed to Start. Check pin assignments and available interrupts. Aborting.");
+    while (1) {
+      yield();
+    }
+  } else {
+    encoder.getState(state);
+    Serial.print("Encoder Successfully Started at value = ");
+    prevEncoderValue = state.currentValue;
+    Serial.println(prevEncoderValue);
+  }
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C); // Address 0x3C for 128x32
 
@@ -33,10 +41,6 @@ void setup() {
   display.display();
 
   Serial.println("IO test");
-
-  // Rotary Encoder setup
-  pinMode(ENC_A, INPUT_PULLUP);
-  pinMode(ENC_B, INPUT_PULLUP);
 
   // text display tests
   display.setTextSize(1);
@@ -60,31 +64,31 @@ void loop() {
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
   display.print("Encoder Value: ");
-  display.println(encoderPos);
+  display.println(currentValue*(-1));
   display.display();
 }
 
 void updateEncoder() {
-  int MSB = digitalRead(ENC_A); // Read encoder pin A
-  int LSB = digitalRead(ENC_B); // Read encoder pin B
+  NewEncoder::EncoderState currentEncoderState;
 
-  int encoded = (MSB << 1) | LSB; // Convert the 2 pin value to single number
+  if (encoder.getState(currentEncoderState)) {
+    Serial.print("Encoder: ");
+    currentValue = currentEncoderState.currentValue;
+    if (currentValue != prevEncoderValue) {
+      Serial.println(currentValue);
+      prevEncoderValue = currentValue;
+    } else
+      switch (currentEncoderState.currentClick) {
+        case NewEncoder::UpClick:
+          Serial.println("at upper limit.");
+          break;
 
-  int sum = (lastEncoded << 2) | encoded; // Adding it to the previous encoded value
+        case NewEncoder::DownClick:
+          Serial.println("at lower limit.");
+          break;
 
-  if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) {
-    if (!direction) {
-      encoderPos++;
-      direction = true; // Clockwise
-    }
+        default:
+          break;
+      }
   }
-  if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) {
-    if (direction) {
-      encoderPos--;
-      direction = false; // Counter-clockwise
-    }
-  }
-
-  // Remember previous encoded value
-  lastEncoded = encoded;
 }
